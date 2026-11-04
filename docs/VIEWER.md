@@ -1,6 +1,6 @@
 # Glock 17 — assembly animation
 
-Every one of the 33 printed parts, in the order a gunsmith actually fits them,
+Every one of the 31 printed parts, in the order a gunsmith actually fits them,
 moving along a path that was collision-tested against the parts already in the
 gun. Open `index.html`.
 
@@ -89,7 +89,7 @@ mesh cannot express.
 
 ## Part inventory
 
-33 parts, 70,168 triangles. Left out on purpose: `Glock 17.STL` (51 MB, the
+31 parts, 63,586 triangles. Left out on purpose: `Glock 17.STL` (51 MB, the
 whole pistol merged into one mesh) and 10 of the 11 cartridge STLs, which are
 duplicate copies of two shapes stacked in the magazine.
 

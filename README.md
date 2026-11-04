@@ -4,7 +4,7 @@ Glock17 3D print model
 
 ## ▶ Watch it go together
 
-![Assembly animation — 33 parts fitted in gunsmith order](docs/assembly.gif)
+![Assembly animation — 31 parts fitted in gunsmith order](docs/assembly.gif)
 
 **[Open the interactive viewer](https://brycengrose.github.io/Glock17-3D-print-model/)** —
 drag to orbit, scrub the timeline, click any part to isolate it, flip the
