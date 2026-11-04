@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glock 17 — assembly</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#14171c; --line:#262b33; --ink:#d8dde4; --dim:#7d8894;
+    --accent:#e0a13a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+    font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+  canvas{display:block}
+  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .lbl{position:absolute;transform:translate(0,-50%);white-space:nowrap;font-size:11px;
+    letter-spacing:.02em;color:#cfd7e0;background:rgba(8,10,13,.8);border:1px solid #2b323b;
+    border-left:2px solid var(--accent);padding:1px 6px;border-radius:2px;opacity:0;
+    transition:opacity .12s}
+  .lbl b{color:var(--accent);font-weight:600;margin-right:5px}
+
+  #hud{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(180deg,#0f1216f0,#0b0d10);
+    border-top:1px solid var(--line);padding:9px 16px 11px;display:flex;gap:14px;align-items:center}
+  #play{width:34px;height:34px;border:1px solid var(--line);background:#171b21;color:var(--ink);
+    border-radius:4px;cursor:pointer;font-size:13px;flex:0 0 auto}
+  #play:hover,#dirbtn:hover{border-color:var(--accent);color:var(--accent)}
+  #dirbtn{width:86px;height:34px;border:1px solid var(--line);background:#171b21;color:var(--ink);
+    border-radius:4px;cursor:pointer;font:inherit;font-size:11px;flex:0 0 auto}
+  #track{position:relative;flex:1;height:34px;cursor:pointer}
+  #rail{position:absolute;top:15px;left:0;right:0;height:4px;background:#20252c;border-radius:2px}
+  #fill{position:absolute;top:15px;left:0;height:4px;background:var(--accent);border-radius:2px;width:0}
+  #knob{position:absolute;top:10px;width:14px;height:14px;margin-left:-7px;border-radius:50%;
+    background:var(--ink);box-shadow:0 0 0 3px #0b0d10}
+  .tick{position:absolute;top:9px;width:1px;height:16px;background:#2a313a}
+
+  #manual{position:fixed;top:14px;left:14px;width:258px;background:rgba(16,19,24,.92);
+    border:1px solid var(--line);border-radius:5px;backdrop-filter:blur(6px);
+    max-height:calc(100vh - 130px);display:flex;flex-direction:column}
+  #manual h1{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+    margin:11px 12px 6px;font-weight:600;flex:0 0 auto}
+  #steps{overflow-y:auto;padding-bottom:8px}
+  #steps::-webkit-scrollbar{width:6px}
+  #steps::-webkit-scrollbar-thumb{background:#2c333c;border-radius:3px}
+  .phase{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#59636f;
+    margin:8px 12px 3px;border-top:1px solid #22272e;padding-top:7px}
+  .phase:first-child{border-top:0;margin-top:0;padding-top:0}
+  .row{display:flex;gap:8px;padding:1px 12px;cursor:pointer;color:var(--dim);align-items:baseline;
+    font-size:11.5px;line-height:1.5}
+  .row:hover{background:#1b2027;color:var(--ink)}
+  .row .n{width:15px;text-align:right;color:#3f4854;flex:0 0 auto;font-size:10px}
+  .row.on{color:#eef2f6;background:#1c2129}
+  .row.on .n{color:var(--accent)}
+  .row.done{color:#69737f}
+
+  #opts{position:fixed;top:14px;right:14px;background:rgba(16,19,24,.9);border:1px solid var(--line);
+    border-radius:5px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;backdrop-filter:blur(6px)}
+  #opts label{display:flex;gap:7px;align-items:center;color:var(--dim);cursor:pointer;font-size:12px}
+  #opts input{accent-color:var(--accent);margin:0}
+  #views{display:flex;gap:4px;margin-top:2px}
+  #views button{flex:1;background:#171b21;border:1px solid var(--line);color:var(--dim);
+    border-radius:3px;padding:3px 0;font:inherit;font-size:11px;cursor:pointer}
+  #views button:hover{border-color:var(--accent);color:var(--accent)}
+  #tip{position:fixed;pointer-events:none;background:#e0a13a;color:#111;font-size:11px;
+    font-weight:600;padding:1px 5px;border-radius:2px;opacity:0;transition:opacity .1s}
+  #cap{position:fixed;left:16px;bottom:70px;font-size:12px;color:var(--dim);letter-spacing:.04em}
+  #cap b{color:var(--accent);letter-spacing:.1em}
+  #note{position:fixed;right:16px;bottom:70px;color:#4c5663;font-size:11px;text-align:right;line-height:1.6}
+</style>
+</head>
+<body>
+<div id="labels"></div>
+<div id="tip"></div>
+
+<div id="manual"><h1>Assembly order</h1><div id="steps"></div></div>
+
+<div id="opts">
+  <label><input type="checkbox" id="cbLabelsAll"> all labels</label>
+  <label><input type="checkbox" id="cbFrame" checked> auto frame</label>
+  <label><input type="checkbox" id="cbSpin"> slow orbit</label>
+  <label><input type="checkbox" id="cbWire"> wireframe</label>
+  <div id="views"><button data-v="side">side</button><button data-v="iso">3/4</button><button data-v="top">top</button></div>
+</div>
+
+<div id="cap"><b id="capNum">00</b> &nbsp;<span id="capTxt">all parts staged</span></div>
+<div id="note">▶ runs in the arrow button's direction<br>click a part to isolate · drag to orbit</div>
+
+<div id="hud">
+  <button id="play" title="play / pause">▶</button>
+  <button id="dirbtn" title="assembly direction">assemble ⇄</button>
+  <div id="track"><div id="rail"></div><div id="fill"></div><div id="knob"></div></div>
+</div>
+
+<script src="lib/three.min.js"></script>
+<script src="lib/OrbitControls.js"></script>
+<script src="lib/RoomEnvironment.js"></script>
+<script src="parts.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ---------------- geometry ---------------- */
+const CAT = {
+  steel:  {color:0x9aa5b1, metalness:0.92, roughness:0.30, env:0.60},
+  polymer:{color:0x17191d, metalness:0.06, roughness:0.80, env:0.10},
+  brass:  {color:0xb08a3e, metalness:0.95, roughness:0.26, env:0.70}
+};
+const V = THREE.Vector3;
+
+function decode(b64){
+  const bin = atob(b64), n = bin.length, u8 = new Uint8Array(n);
+  for (let i=0;i<n;i++) u8[i]=bin.charCodeAt(i);
+  return new Float32Array(u8.buffer);
+}
+
+const GROUP = PLAN.groups;
+const STEPNAMES = PLAN.steps;
+const NSTEP = STEPNAMES.length;
+
+const parts = PARTS.map(p => {
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(decode(p.data), 3));
+  geom.computeVertexNormals();
+  geom.computeBoundingBox();
+  const c = new V();
+  geom.boundingBox.getCenter(c);
+  return {
+    id:p.id, label:p.label, cat:p.cat, group:p.group, step:p.step,
+    box:p, geom, center:c,
+    staged:new V(...p.staged),
+    bench:new V(...GROUP[p.group].bench),
+    extra:new V(...GROUP[p.group].extra),
+    gstep:GROUP[p.group].install,
+    p:0, mesh:null
+  };
+});
+// group start offset: where the subassembly sits until its own install step
+const gStart = {};
+for (const g in GROUP) gStart[g] = new V(...GROUP[g].bench).add(new V(...GROUP[g].extra));
+
+/* ---------------- scene ---------------- */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0d10);
+const camera = new THREE.PerspectiveCamera(32, innerWidth/innerHeight, 0.1, 400);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputEncoding = THREE.sRGBEncoding;
+document.body.insertBefore(renderer.domElement, document.body.firstChild);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+scene.add(new THREE.HemisphereLight(0x9fb6d0, 0x0a0c10, 0.12));
+const key = new THREE.DirectionalLight(0xffffff, 0.78); key.position.set(7,10,13); scene.add(key);
+const fillL = new THREE.DirectionalLight(0x7b93ad, 0.22); fillL.position.set(-9,-4,7); scene.add(fillL);
+const rim = new THREE.DirectionalLight(0xffffff, 0.30); rim.position.set(2,-9,-11); scene.add(rim);
+
+const root = new THREE.Group(); scene.add(root);
+for (const pt of parts){
+  const spec = CAT[pt.cat] || CAT.steel;
+  pt.mesh = new THREE.Mesh(pt.geom, new THREE.MeshStandardMaterial({
+    color:spec.color, metalness:spec.metalness, roughness:spec.roughness,
+    envMapIntensity:spec.env
+  }));
+  pt.mesh.userData.part = pt;
+  root.add(pt.mesh);
+}
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.rotateSpeed = 0.75; controls.minDistance = 6; controls.maxDistance = 140;
+
+/* ---------------- camera: exact corner fit ---------------- */
+const _v = new V(), _p = new V(), _q = new V();
+const _r = new V(), _u = new V(), _d2 = new V(), _cam = new V(), _tgt = new V();
+
+const CORNERS = (()=>{ const c=[]; for(let i=0;i<8;i++) c.push([i&1?1:0,i&2?1:0,i&4?1:0]); return c; })();
+const POOL = []; for (let i=0;i<parts.length*8;i++) POOL.push(new V());
+
+function collect(){          // boxes of every part at its current position
+  const box = new THREE.Box3();
+  let k = 0;
+  for (const pt of parts){
+    const o = pt.mesh.position;
+    const mn = pt.box.min, mx = pt.box.max;
+    box.expandByPoint(_p.set(mn[0]+o.x, mn[1]+o.y, mn[2]+o.z));
+    box.expandByPoint(_p.set(mx[0]+o.x, mx[1]+o.y, mx[2]+o.z));
+    for (const c of CORNERS){
+      POOL[k++].set((c[0]?mx[0]:mn[0])+o.x, (c[1]?mx[1]:mn[1])+o.y, (c[2]?mx[2]:mn[2])+o.z);
+    }
+  }
+  return {center: box.getCenter(new V()), corners: POOL};
+}
+
+/* Fit the parts into the usable part of the window - the step list owns the
+   left edge and the transport bar the bottom - by iterating recentre + resize. */
+const PAD = {l:300, r:26, t:18, b:112};
+function usableBox(){
+  const x0 = PAD.l, x1 = innerWidth - PAD.r, y0 = PAD.t, y1 = innerHeight - PAD.b;
+  return {
+    cx: ((x0+x1)/2)/innerWidth*2 - 1,
+    cy: 1 - ((y0+y1)/2)/innerHeight*2,
+    hw: ((x1-x0)/2)/innerWidth*2,
+    hh: ((y1-y0)/2)/innerHeight*2
+  };
+}
+
+function solveFit(center, dir, corners){
+  _d2.copy(dir).normalize();
+  _r.crossVectors(new V(0,1,0), _d2);
+  if (_r.lengthSq() < 1e-6) _r.set(1,0,0);
+  _r.normalize();
+  _u.crossVectors(_d2, _r).normalize();
+  const tV = Math.tan(THREE.MathUtils.degToRad(camera.fov)*0.5);
+  const tH = tV * camera.aspect;
+  const U = usableBox();
+  _tgt.copy(center);
+
+  let radius = 0;
+  for (const c of corners) radius = Math.max(radius, c.distanceTo(center));
+  let dist = Math.max(1, radius / Math.sin(Math.atan(tV)));
+
+  for (let pass=0; pass<8; pass++){
+    _cam.copy(_tgt).addScaledVector(_d2, dist);
+    let mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9;
+    for (const c of corners){
+      _v.subVectors(c, _cam);
+      const z = Math.max(0.05, -_v.dot(_d2));
+      const x = _v.dot(_r)/(z*tH), y = _v.dot(_u)/(z*tV);
+      if (x<mnx) mnx=x; if (x>mxx) mxx=x;
+      if (y<mny) mny=y; if (y>mxy) mxy=y;
+    }
+    _tgt.addScaledVector(_r, ((mnx+mxx)/2 - U.cx) * dist*tH)
+        .addScaledVector(_u, ((mny+mxy)/2 - U.cy) * dist*tV);
+    const need = Math.max(((mxx-mnx)/2)/U.hw, ((mxy-mny)/2)/U.hh, 0.25);
+    dist *= need;
+    if (Math.abs(need-1) < 0.0015 && pass >= 3) break;
+  }
+  return {target:_tgt.clone(), dist: dist*1.015};
+}
+
+let autoFrame = true;
+function frameCamera(view){
+  const dirs = { side:new V(0.02,0.06,1), iso:new V(0.42,0.30,1), top:new V(0.02,0.96,0.30) };
+  const d = (dirs[view]||dirs.iso).clone().normalize();
+  const f = collect();
+  const fit = solveFit(f.center, d, f.corners);
+  controls.target.copy(fit.target);
+  camera.position.copy(fit.target).addScaledVector(d, fit.dist);
+  camera.near = Math.max(0.05, fit.dist*0.01); camera.far = fit.dist*10;
+  camera.updateProjectionMatrix(); controls.update();
+}
+
+/* ---------------- timeline ---------------- */
+const DUR = STEPNAMES.map(n =>
+  n.indexOf('onto the frame') >= 0 ? 1.8 :
+  n.indexOf('Magazine into the frame') >= 0 ? 1.3 : 0.62);
+const TOTAL = DUR.reduce((a,b)=>a+b,0);
+let t = 0, playing = false, forward = true, speed = 1, lastNow = 0;
+
+const ease = x => x<0.5 ? 4*x*x*x : 1-Math.pow(-2*x+2,3)/2;
+const clamp01 = x => x<0?0:x>1?1:x;
+
+function stepProgress(i, tt){
+  if (i < 0) return 1;
+  let acc = 0;
+  for (let k=0;k<i;k++) acc += DUR[k];
+  const a = acc/TOTAL, b = (acc+DUR[i])/TOTAL;
+  return ease(clamp01((tt-a)/(b-a)));
+}
+
+function setTime(v){
+  t = clamp01(v);
+  const gprog = {};
+  for (const g in GROUP) gprog[g] = GROUP[g].install < 0 ? 1 : stepProgress(GROUP[g].install, t);
+  for (const pt of parts){
+    pt.p = stepProgress(pt.step, t);
+    const g = gStart[pt.group].clone().multiplyScalar(1 - gprog[pt.group]);
+    pt.mesh.position.copy(g).addScaledVector(pt.staged, 1 - pt.p);
+  }
+  updateUI();
+}
+
+/* ---------------- labels ---------------- */
+const labelHost = document.getElementById('labels');
+const labelEls = parts.map(pt=>{
+  const d = document.createElement('div');
+  d.className = 'lbl';
+  d.innerHTML = '<b>' + (pt.step >= 0 ? String(pt.step+1).padStart(2,'0') : '·') + '</b>' + pt.label;
+  labelHost.appendChild(d);
+  return d;
+});
+
+let hovered = null, selected = null;
+function activeStep(){ return Math.min(NSTEP-1, Math.ceil(t*NSTEP-1)); }
+
+function updateLabels(){
+  const all = document.getElementById('cbLabelsAll').checked;
+  const act = activeStep();
+  for (const el of labelEls) el.style.opacity = 0;
+  const drawn = [];
+  const order = parts.map((pt,i)=>({pt,i}))
+    .filter(o=>o.pt.p < 0.999 || all || o.pt === hovered || o.pt === selected)
+    .filter(o=>all || o.pt.step === act || o.pt === hovered || o.pt === selected)
+    .sort((a,b)=>a.pt.mesh.position.distanceTo(camera.position) - b.pt.mesh.position.distanceTo(camera.position));
+  for (const {pt,i} of order){
+    const el = labelEls[i];
+    _v.copy(pt.center).add(pt.mesh.position).project(camera);
+    const x = (_v.x*0.5+0.5)*innerWidth, y = (-_v.y*0.5+0.5)*innerHeight;
+    if (x<-100||x>innerWidth+100||y<-40||y>innerHeight+40) continue;
+    if (drawn.some(([dx,dy])=>Math.abs(dx-x)<110 && Math.abs(dy-y)<16)) continue;
+    drawn.push([x,y]);
+    const fade = (pt.step === act || pt === hovered || pt === selected) ? 1 : 0.5;
+    el.style.left = (x+10)+'px'; el.style.top = y+'px';
+    el.style.opacity = fade * (selected && pt !== selected ? 0.3 : 1);
+  }
+}
+
+/* ---------------- UI ---------------- */
+const fill=document.getElementById('fill'), knob=document.getElementById('knob');
+const playBtn=document.getElementById('play'), track=document.getElementById('track');
+const dirBtn=document.getElementById('dirbtn'), stepsHost=document.getElementById('steps');
+const capNum=document.getElementById('capNum'), capTxt=document.getElementById('capTxt');
+
+const boundA = STEPNAMES.findIndex(n=>n.indexOf('Firing pin') >= 0);
+const boundB = STEPNAMES.findIndex(n=>n.indexOf('onto the frame') >= 0);
+const PHASES = [
+  ['Frame assembly', 0, boundA],
+  ['Slide assembly', boundA, boundB],
+  ['Slide onto frame · magazine', boundB, NSTEP],
+];
+
+const rowEls = [];
+for (const [name, a, b] of PHASES){
+  const h = document.createElement('div');
+  h.className = 'phase'; h.textContent = name;
+  stepsHost.appendChild(h);
+  for (let i=a;i<b;i++){
+    const r = document.createElement('div');
+    r.className = 'row';
+    r.innerHTML = '<span class="n">'+(i+1)+'</span><span>'+STEPNAMES[i]+'</span>';
+    r.dataset.step = i;
+    r.onclick = ()=>{ playing=false; syncPlay(); setTime((accDur(i)+DUR[i]*0.5)/TOTAL); };
+    stepsHost.appendChild(r);
+    rowEls[i] = r;
+  }
+}
+function accDur(i){ let a=0; for (let k=0;k<i;k++) a+=DUR[k]; return a; }
+
+for (let i=1;i<NSTEP;i++){
+  const tick=document.createElement('div');
+  tick.className='tick'; tick.style.left=(accDur(i)/TOTAL*100)+'%';
+  track.appendChild(tick);
+}
+
+function updateUI(){
+  fill.style.width = (t*100)+'%';
+  knob.style.left  = (t*100)+'%';
+  const cur = activeStep();
+  rowEls.forEach((r,i)=>{
+    if (!r) return;
+    r.classList.toggle('on', i===cur && t<0.9999);
+    r.classList.toggle('done', accDur(i+1)/TOTAL <= t+1e-9);
+  });
+  const on = rowEls[cur];
+  if (on && on.scrollIntoView && !dragging) on.scrollIntoView({block:'nearest'});
+  capNum.textContent = t<=0 ? '—' : String(cur+1).padStart(2,'0') + '/' + NSTEP;
+  capTxt.textContent = t<=0 ? 'all parts staged' : t>=1 ? 'assembled'
+    : STEPNAMES[cur];
+}
+
+function syncPlay(){ playBtn.textContent = playing ? '❚❚' : '▶'; }
+function syncDir(){ dirBtn.textContent = forward ? 'assemble ⇄' : 'disassemble ⇄'; }
+
+playBtn.onclick = ()=>{
+  if (!playing && (forward ? t>=1 : t<=0)) t = forward ? 0 : 1;
+  playing = !playing; syncPlay();
+};
+dirBtn.onclick = ()=>{
+  forward = !forward;
+  if (forward && t>=1) t = 0;
+  if (!forward && t<=0) t = 1;
+  playing = true; syncPlay(); syncDir(); setTime(t);
+};
+
+let dragging=false;
+function scrub(e){
+  const r = track.getBoundingClientRect();
+  setTime((e.clientX-r.left)/r.width);
+}
+track.addEventListener('pointerdown', e=>{ dragging=true; playing=false; syncPlay(); scrub(e); track.setPointerCapture(e.pointerId); });
+track.addEventListener('pointermove', e=>{ if(dragging) scrub(e); });
+track.addEventListener('pointerup', ()=>{ dragging=false; });
+
+document.getElementById('cbFrame').onchange = e=>{ autoFrame = e.target.checked; };
+renderer.domElement.addEventListener('wheel', ()=>{
+  if (autoFrame){ autoFrame=false; document.getElementById('cbFrame').checked=false; }
+}, {passive:true});
+document.getElementById('cbSpin').onchange = e=>{ controls.autoRotate = e.target.checked; controls.autoRotateSpeed = 0.55; };
+document.getElementById('cbWire').onchange = e=>{ for (const pt of parts) pt.mesh.material.wireframe = e.target.checked; };
+document.querySelectorAll('#views button').forEach(b=>{ b.onclick = ()=> frameCamera(b.dataset.v); });
+
+/* hover / isolate */
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+const tip = document.getElementById('tip');
+function partAt(e){
+  ptr.x = (e.clientX/innerWidth)*2-1;
+  ptr.y = -(e.clientY/innerHeight)*2+1;
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(root.children, false)[0];
+  return hit ? hit.object.userData.part : null;
+}
+renderer.domElement.addEventListener('pointermove', e=>{
+  const pt = partAt(e);
+  if (pt !== hovered){
+    if (hovered && hovered !== selected) hovered.mesh.material.emissive.setHex(0x000000);
+    hovered = pt;
+    if (hovered && hovered !== selected) hovered.mesh.material.emissive.setHex(0x3a2a08);
+    tip.style.opacity = pt ? 1 : 0;
+  }
+  if (pt){ tip.textContent = pt.label; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-6)+'px'; }
+});
+function selectPart(pt){
+  if (selected) selected.mesh.material.emissive.setHex(0x000000);
+  selected = (pt && pt !== selected) ? pt : null;
+  if (selected) selected.mesh.material.emissive.setHex(0x4a3408);
+  for (const p of parts){
+    p.mesh.material.opacity = (!selected || p === selected) ? 1 : 0.13;
+    p.mesh.material.transparent = !!selected;
+    p.mesh.material.depthWrite = !selected || p === selected;
+    p.mesh.material.needsUpdate = true;
+  }
+}
+renderer.domElement.addEventListener('click', e=> selectPart(partAt(e)));
+addEventListener('keydown', e=>{
+  if (e.code==='Space'){ e.preventDefault(); playBtn.onclick(); }
+  if (e.code==='ArrowRight') setTime(t+0.01);
+  if (e.code==='ArrowLeft')  setTime(t-0.01);
+});
+
+/* ---------------- loop ---------------- */
+const _dir = new V(), _want = new V();
+function easeCamera(){
+  const now = collect();
+  _dir.copy(camera.position).sub(controls.target);
+  if (_dir.lengthSq() < 1e-9) _dir.set(0.42,0.30,1);
+  _dir.normalize();
+  const f = solveFit(now.center, _dir, now.corners);
+  controls.target.lerp(f.target, 0.16);
+  const cur = camera.position.distanceTo(controls.target);
+  camera.position.copy(controls.target).addScaledVector(_dir, cur + (f.dist-cur)*0.16);
+}
+
+function tick(now){
+  requestAnimationFrame(tick);
+  const dt = Math.min(0.05, (now-lastNow)/1000 || 0); lastNow = now;
+  if (playing){
+    t += (forward ? 1 : -1) * dt * speed / TOTAL;
+    if (t>=1){ t=1; playing=false; syncPlay(); }
+    if (t<=0){ t=0; playing=false; syncPlay(); }
+    setTime(t);
+  }
+  controls.update();
+  if (autoFrame) easeCamera();
+  updateLabels();
+  renderer.render(scene, camera);
+}
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+setTime(0);
+syncPlay(); syncDir();
+frameCamera('iso');
+requestAnimationFrame(tick);
+
+window.__viewer = {setTime, frameCamera, parts, camera, controls, selectPart, partAt, PAD,
+                   get t(){return t;}, set playing(v){playing=v;syncPlay();}};
+})();
+</script>
+</body>
+</html>
